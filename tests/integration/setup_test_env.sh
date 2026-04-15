@@ -23,16 +23,23 @@ echo "Exporting kubeconfig to dedicated file..."
 kind export kubeconfig --name osac-test --kubeconfig "${SCRIPT_DIR}/kubeconfig-osac-test"
 echo "Kubeconfig exported to: ${SCRIPT_DIR}/kubeconfig-osac-test"
 
-# 2. Clone osac-operator for CRDs
-echo "Cloning osac-operator for CRDs..."
-if [ -d "/tmp/osac-operator" ]; then
-  rm -rf /tmp/osac-operator
+# 2. Locate osac-operator CRDs (prefer local copy, fall back to cloning)
+LOCAL_OPERATOR_CRD_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)/osac-operator/config/crd/bases"
+if [ -d "${LOCAL_OPERATOR_CRD_DIR}" ]; then
+  echo "Using local osac-operator CRDs from ${LOCAL_OPERATOR_CRD_DIR}"
+  OPERATOR_CRD_DIR="${LOCAL_OPERATOR_CRD_DIR}"
+else
+  echo "Cloning osac-operator for CRDs..."
+  if [ -d "/tmp/osac-operator" ]; then
+    rm -rf /tmp/osac-operator
+  fi
+  git clone https://github.com/osac-project/osac-operator.git /tmp/osac-operator
+  OPERATOR_CRD_DIR="/tmp/osac-operator/config/crd/bases"
 fi
-git clone https://github.com/osac-project/osac-operator.git /tmp/osac-operator
 
 # 3. Install OSAC CRDs
 echo "Installing OSAC CRDs..."
-kubectl apply -f /tmp/osac-operator/config/crd/bases/
+kubectl apply -f "${OPERATOR_CRD_DIR}/"
 
 # 3.5. Install external CRDs needed by workflows
 echo "Installing KubeVirt operator..."
